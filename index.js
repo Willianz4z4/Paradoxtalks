@@ -16,7 +16,7 @@ const server = http.createServer(async (req, res) => {
   const parsedUrl = url.parse(req.url, true);
   const userKey = parsedUrl.query.key;
   const userHwid = parsedUrl.query.hwid;
-  
+
   const serviceId = "drivingempireparadoxall";
 
   if (!userKey || !userHwid) {
@@ -49,8 +49,8 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-// Define a porta que o Render vai usar
+// Define a porta que o Render vai usar e escuta em 0.0.0.0
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
