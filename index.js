@@ -1,48 +1,56 @@
-export default {
-  async fetch(request, env, ctx) {
-    if (request.method !== "GET") {
-      return new Response("Acesso negado.", { status: 405 });
-    }
+const http = require('http');
+const url = require('url');
 
-    const url = new URL(request.url);
-    const userKey = url.searchParams.get("key");
-    const userHwid = url.searchParams.get("hwid");
+const server = http.createServer(async (req, res) => {
+  // Permite que o Roblox leia a resposta sem bloquear
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Type', 'application/json');
 
-    const serviceId = "drivingempireparadoxall"; 
+  // 1. Rejeita qualquer coisa que não seja requisição GET
+  if (req.method !== 'GET') {
+    res.writeHead(405);
+    return res.end(JSON.stringify({ success: false, message: 'Acesso negado.' }));
+  }
 
-    if (!userKey || !userHwid) {
-      return new Response(JSON.stringify({ success: false, message: "Faltando Key ou HWID" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
+  // 2. Pega a Key e o HWID da URL
+  const parsedUrl = url.parse(req.url, true);
+  const userKey = parsedUrl.query.key;
+  const userHwid = parsedUrl.query.hwid;
+  
+  const serviceId = "drivingempireparadoxall";
 
-    const pandaUrl = `https://api.pandadevelopment.net/v4/keys/validate?service_id=${serviceId}&key=${userKey}&hwid=${userHwid}`;
+  if (!userKey || !userHwid) {
+    res.writeHead(400);
+    return res.end(JSON.stringify({ success: false, message: "Faltando Key ou HWID" }));
+  }
 
-    try {
-      const pandaResponse = await fetch(pandaUrl, {
-        method: 'GET',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'application/json'
-        }
-      });
+  // 3. Monta o link oficial do Panda Auth
+  const pandaUrl = `https://api.pandadevelopment.net/v4/keys/validate?service_id=${serviceId}&key=${userKey}&hwid=${userHwid}`;
 
-      const data = await pandaResponse.text();
+  try {
+    // 4. Faz a requisição pro Panda
+    const pandaResponse = await fetch(pandaUrl, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Accept': 'application/json'
+      }
+    });
 
-      return new Response(data, {
-        status: pandaResponse.status,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*" 
-        }
-      });
+    const data = await pandaResponse.text();
 
-    } catch (error) {
-      return new Response(JSON.stringify({ success: false, message: "Erro no Proxy: " + error.message }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-  },
-};
+    // 5. Devolve a resposta pro seu script
+    res.writeHead(pandaResponse.status);
+    res.end(data);
+
+  } catch (error) {
+    res.writeHead(500);
+    res.end(JSON.stringify({ success: false, message: "Erro no Proxy: " + error.message }));
+  }
+});
+
+// Define a porta que o Render vai usar
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+});
